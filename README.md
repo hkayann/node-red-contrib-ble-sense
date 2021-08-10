@@ -34,7 +34,7 @@ More details provided in Node-RED node information panel.
 
 An example flow that provides subscription to the all characteristics is given below.
 
-<img src="images/exampleFlow.PNG"></img>
+<img src="images/exampleFlow2.png"></img>
 
 # License
 
