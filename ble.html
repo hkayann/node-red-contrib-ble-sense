@@ -1,0 +1,126 @@
+<script type="text/javascript">
+    RED.nodes.registerType('BLE Scanner',{
+        category: 'BLE Sense',
+        color: '#66F3FF',
+        defaults: {
+            name: {value:"BLE Scanner"},
+            searchFor: {value:""},
+            searchForType: {value: ""},
+            output: {value:"Peripheral"},
+            outputType: {value: ""}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "icons/ble.svg",
+        label: function() {
+            return this.name||"BLE Scanner";
+        },
+        oneditprepare: function() {
+            $("#node-input-searchFor").typedInput({
+                types:[
+                    {
+                        value: "All",
+                        label: "All",
+                        hasValue: false
+                    },
+                    {
+                        value: "Name",
+                        label: "Local Name"
+                    }],
+                typeField: $("#node-input-searchForType")
+            });
+            $("#node-input-output").typedInput({
+                types:[
+                    {
+                        value: "Output",
+                        label: "",
+                        options: ["MAC", "Peripheral", "Data"]
+                    }],
+                typeField: $("#node-input-outputType")
+            });
+        }
+    });
+</script>
+
+<!-- BLE SCANNER NODE-->
+<script type="text/html" data-template-name="BLE Scanner">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i>&nbsp;Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+        <h4></h4>
+        <label for="node-input-searchFor"><i class="fa fa-spinner"></i>&nbsp;Search for</label>
+        <input type="text" id="node-input-searchFor">
+        <input type="hidden" id="node-input-searchForType">
+        <h4></h4>
+        <label for="node-input-output"><i class="fa fa-sign-out"></i>&nbsp;Output</label>
+        <input type="text" id="node-input-output">
+        <input type="hidden" id="node-input-outputType">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="BLE Scanner">
+    <p>BLE Central node that enables BLE communication with peripharels.</p>
+    <h3>Configuration</h3>
+    <dl class="message-properties">
+        <dt class="optional">Name <span class="property-type">string</span></dt><dd>Appoint a name to identify your node.</dd>
+        <dt>Search for<span class="property-type">JSON Object | String</span></dt><dd>Select the scanning method.</dd>
+        <dd>
+            <ul>
+                <li><b>Local Name:</b> Either a string name or all.</li>
+            </ul>
+        </dd>
+        <dt>Output<span class="property-type">JSON Object | Buffer | String</span></dt><dd>Select the desired output.</dd>
+    </dl>
+    <h3>Output</h3>
+    <p>The output is either a peripheral object, buffer data, or MAC address.</p>
+    <h3>Note</h3>
+    <p>This node either can be used to scan for a certain peripheral or can act as an observer.</p>
+</script>
+<!----------------------------------->
+
+<!-- BLE CONNECT -->
+<script type="text/javascript">
+    var defaultSubscribe = '{"services": [], "characteristics": []}';
+    RED.nodes.registerType('BLE Connect',{
+        category: 'BLE Sense',
+        color: '#66F3FF',
+        defaults: {
+            name: {value:""},
+            subscribe: {value:defaultSubscribe}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "icons/ble.svg",
+        label: function() {
+            return this.name||"BLE Connect";
+        },
+        oneditprepare: function() {
+            $("#node-input-subscribe").typedInput({
+                type:"json",
+                types:["json"]
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="BLE Connect">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+        <h4></h4>
+        <label for="node-input-subscribe"><i class="fa fa-commenting"></i>&nbsp;Subscribe</label>
+        <input type="text" id="node-input-subscribe">
+    </div>
+</script>
+
+ <script type="text/html" data-help-name="BLE Connect">
+    <p>BLE Central node that enables BLE communication with peripharels.</p>
+    <h3>Configuration</h3>
+    <dl class="message-properties">
+        <dt class="optional">Name <span class="property-type">string</span></dt><dd>Appoint a name to identify your node.</dd>
+        <dt>Subscribe <span class="property-type">JSON Object</span></dt><dd>Provide service and characteristic UUIDs to be subscribed. Leave empty to subscribe all.</dd>
+    </dl>
+    <h3>Output</h3>
+    <p>The output is a JSON object that contains the name of subscribed <b>characteristics</b> as <i>keys</i> and <b>data</b> as <i>values</i>.</p>
+</script>
+<!------------------------------------------------------------------------>

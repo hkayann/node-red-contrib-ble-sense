@@ -41,3 +41,6 @@ An example flow that provides subscription to the all characteristics is given b
 Licensed under the MIT [License](LICENSE).
 
 ## To Do:
+
+- [x] Publish the 1st version of node-red-contrib-ble-sense.
+- [ ] Add accelerometer, gyroscope, magnetometer, microphone data to Arduino code.

@@ -1,0 +1,170 @@
+[
+    {
+        "id": "c82c4a67f528c1f6",
+        "type": "tab",
+        "label": "BLE Example Flow",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "537bc5702a7e2434",
+        "type": "inject",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "start",
+        "x": 170,
+        "y": 220,
+        "wires": [
+            [
+                "7e86f3caedb00f12"
+            ]
+        ]
+    },
+    {
+        "id": "7379aeacdb8b085d",
+        "type": "inject",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "stop",
+        "x": 170,
+        "y": 300,
+        "wires": [
+            [
+                "7e86f3caedb00f12"
+            ]
+        ]
+    },
+    {
+        "id": "0cca9e290a0e6038",
+        "type": "debug",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 510,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "7e86f3caedb00f12",
+        "type": "BLE Scanner",
+        "z": "c82c4a67f528c1f6",
+        "name": "BLE Scanner",
+        "searchFor": "Nano",
+        "searchForType": "Name",
+        "output": "Peripheral",
+        "outputType": "Output",
+        "x": 350,
+        "y": 260,
+        "wires": [
+            [
+                "0cca9e290a0e6038"
+            ]
+        ]
+    },
+    {
+        "id": "95641643b98aa2a1",
+        "type": "BLE Connect",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "subscribe": "{\"services\": [], \"characteristics\": []}",
+        "x": 350,
+        "y": 440,
+        "wires": [
+            [
+                "586e570cdccff982"
+            ]
+        ]
+    },
+    {
+        "id": "984f42db4e60dac4",
+        "type": "inject",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "disconnect",
+        "x": 170,
+        "y": 480,
+        "wires": [
+            [
+                "95641643b98aa2a1"
+            ]
+        ]
+    },
+    {
+        "id": "ff078f23dffa3306",
+        "type": "inject",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "09:16:8c:47:5f:71",
+        "x": 150,
+        "y": 400,
+        "wires": [
+            [
+                "95641643b98aa2a1"
+            ]
+        ]
+    },
+    {
+        "id": "586e570cdccff982",
+        "type": "debug",
+        "z": "c82c4a67f528c1f6",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 510,
+        "y": 440,
+        "wires": []
+    }
+]
