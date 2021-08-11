@@ -28,6 +28,20 @@ To stop scanning a message with **stop** topic should be given.
 **BLE Connect** node provides direct connection to the peripheral. This node must not be used alone. The scanning should be in progress to establish a connection.
 It takes JSON Object as an input. The service and characteristics UUIDs should be provided. If not, it will try to subscribe all advertised characteristics.
 
+The example input is shown below: 
+```
+{
+    "services": [
+        "181a"
+    ],
+    "characteristics": [
+        "2a6e",
+        "2a6f",
+        "2a6d"
+    ]
+}
+```
+
 More details provided in Node-RED node information panel.
 
 # Examples
