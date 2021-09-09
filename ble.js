@@ -58,13 +58,13 @@ module.exports = function(RED) {
             const OUTPUT = () => {
                 switch (node.output){
                     case 'MAC':
-                        return node.send(MAC);
+                        return node.send({payload:MAC});
                     case 'Peripheral':
-                        return node.send(peripheral);
+                        return node.send({payload:JSON.parse(peripheral)});
                     case 'Data':
                         if(ADVERTISEMENT.serviceData[0]){
                             if (ADVERTISEMENT.serviceData[0].data) {
-                                return node.send(ADVERTISEMENT.serviceData[0].data);
+                                return node.send({payload:ADVERTISEMENT.serviceData[0].data});
                             }
                         }
                         break; 
