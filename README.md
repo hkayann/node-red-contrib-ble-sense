@@ -53,3 +53,7 @@ An example flow that provides subscription to the all characteristics is given b
 # License
 
 Licensed under the MIT [License](LICENSE).
+
+# Known Bugs
+
+- BLE Scanner status is not changing properly after establishing the first connection.
