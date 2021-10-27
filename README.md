@@ -57,3 +57,4 @@ Licensed under the MIT [License](LICENSE).
 # Known Bugs
 
 - BLE Scanner status is not changing properly after establishing the first connection.
+- To reconnect, we need to wait around 10 secs after disconnnecting. Otherwise the connection drops.
