@@ -42,7 +42,7 @@ The example input is shown below:
 }
 ```
 
-More details provided in Node-RED node information panel.
+More details are provided in Node-RED node information panel.
 
 # Examples
 
