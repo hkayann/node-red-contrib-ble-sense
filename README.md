@@ -15,7 +15,7 @@ Requires [@abandonware/noble: 1.9.2-14.](https://www.npmjs.com/package/@abandonw
 
 # Quick Start
 
-The package currently contains two nodes: BLE Scanner, BLE Connect.
+The package contains two nodes: BLE Scanner, BLE Connect.
 
 **BLE Scanner** node allows you to scan BLE devices. A message with **start** as a topic starts scanning. The node can output the following:
 - Whole peripheral as an object.
