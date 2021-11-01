@@ -166,6 +166,7 @@ module.exports = function(RED) {
                 node.status( { fill: "green", shape: "ring", text: "Connected." } );
                 const ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues).catch(e => send(e));
                 characteristicNumber = Object.keys(ALL.characteristics).length;
+                node.log(ALL.characteristics);
                 for (const [key, character] of Object.entries(ALL.characteristics)) {
                     character.on('data', (data) => { 
                         if (character.uuid === '2a6d') {
@@ -179,12 +180,13 @@ module.exports = function(RED) {
                             data = data.readUInt16LE() * decimalSetter[0];
                             dataObject[character.name] = data.toFixed(2);
                             counterHum++;
-                        } else {
-                            data = data.readValue();
-                            node.send(data);
+                        } else if (character.uuid === '2101') {
+                            data = data.readInt16LE() * decimalSetter[0];
+                            dataObject[character.name] = data.toFixed(2);
+                            send(dataObject);
                         }
                         total = counterHum + counterPres + counterTemp;
-                        if ( total % characteristicNumber == 0){
+                        if ( total % characteristicNumber == 0 && total !== 0){
                             send(dataObject);
                         }
                       });
