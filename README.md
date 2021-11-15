@@ -54,7 +54,24 @@ An example flow that provides subscription to the all characteristics is given b
 
 Licensed under the MIT [License](LICENSE).
 
+# Cite
+
+Please cite the following work if you are making use of this package academically.
+
+@article{KAYAN2021100437,
+title = {AnoML-IoT: An end to end re-configurable multi-protocol anomaly detection pipeline for Internet of Things},
+journal = {Internet of Things},
+pages = {100437},
+year = {2021},
+issn = {2542-6605},
+doi = {https://doi.org/10.1016/j.iot.2021.100437},
+url = {https://www.sciencedirect.com/science/article/pii/S2542660521000810},
+author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and Charith Perera}
+}
+
 # Known Bugs
 
 - BLE Scanner status is not changing properly after establishing the first connection.
 - To reconnect, we need to wait around 10 secs after disconnnecting. Otherwise the connection drops.
+
+
