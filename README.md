@@ -58,15 +58,15 @@ Licensed under the MIT [License](LICENSE).
 
 Please cite the following work if you are making use of this package academically.
 
-@article{KAYAN2021100437,
-title = {AnoML-IoT: An end to end re-configurable multi-protocol anomaly detection pipeline for Internet of Things},
-journal = {Internet of Things},
-pages = {100437},
-year = {2021},
-issn = {2542-6605},
-doi = {https://doi.org/10.1016/j.iot.2021.100437},
-url = {https://www.sciencedirect.com/science/article/pii/S2542660521000810},
-author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and Charith Perera}
+@article{KAYAN2021100437,<br />
+title = {AnoML-IoT: An end to end re-configurable multi-protocol anomaly detection pipeline for Internet of Things},<br />
+journal = {Internet of Things},<br />
+pages = {100437},<br />
+year = {2021},<br />
+issn = {2542-6605},<br />
+doi = {https://doi.org/10.1016/j.iot.2021.100437},<br />
+url = {https://www.sciencedirect.com/science/article/pii/S2542660521000810},<br />
+author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and Charith Perera}<br />
 }
 
 # Known Bugs
