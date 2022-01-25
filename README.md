@@ -11,7 +11,7 @@ npm install node-red-contrib-ble-sense
 
 # Prerequisite
 
-Requires [@abandonware/noble: 1.9.2-14.](https://www.npmjs.com/package/@abandonware/noble)
+Requires [@abandonware/noble: 1.9.2-14.](https://www.npmjs.com/package/@abandonware/noble).
 
 # Quick Start
 
