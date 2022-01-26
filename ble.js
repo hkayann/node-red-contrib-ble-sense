@@ -6,7 +6,9 @@ module.exports = function(RED) {
 
     "use strict";
 
+    //const EventEmitter = require('events');
     require('events').defaultMaxListeners = 50;
+    //EventEmitter.defaultMaxListeners = 50;
     const noble = require('@abandonware/noble');
 
     var vars = {};
@@ -114,7 +116,7 @@ module.exports = function(RED) {
     RED.nodes.registerType("BLE Scanner", BLEScanner);
 
     /*==========================*/
-    // BLE Connect Node         //
+    // BLE Connect Node         
     /*==========================*/
 
     function BLEConnect(config) {
@@ -126,7 +128,7 @@ module.exports = function(RED) {
         
         const bufferChecker = Buffer.from([0, 0]);
         const notifySetter = Buffer.from([1, 0]); 
-        const decimalSetter = [0.01];
+        const decimalSetter = [0.01, 0.1];
         
         try {
             var inputObject = JSON.parse(node.subscribe); 
@@ -144,14 +146,36 @@ module.exports = function(RED) {
             node.send(new Error(`Key names should be "services" and "characteristics".`));
         }
 
-        let dataObject = {};
+        let environmentalData = {};
+        environmentalData.payload = {};
+        var accData = {};
+        var gyroData = {};
+        var magData = {};
+        accData.payload = {
+            "accX": 0,
+            "accY": 0,
+            "accZ": 0
+        };
+        gyroData.payload = {
+            "gyroX": 0,
+            "gyroY": 0,
+            "gyroZ": 0
+        };
+        magData.payload = {
+            "magX": 0,
+            "magY": 0,
+            "magZ": 0
+        };
         let index;
         let counterTemp = 0;
         let counterHum = 0;
         let counterPres = 0;
-        let total = 0;
+        let counterAccX = 0;
+        let counterAccY = 0;
+        let counterAccZ = 0;
         let characteristicNumber = 0;
         
+        // Start const INPUT
         const INPUT = async (msg, send, done) => {
     
             let input = msg.topic.toLowerCase()
@@ -164,63 +188,82 @@ module.exports = function(RED) {
                 await noble.stopScanningAsync().catch(e => send(e));
                 await peripheralArray[index].connectAsync().catch(e => send(e)); 
                 node.status( { fill: "green", shape: "ring", text: "Connected." } );
+                // discover all services and characteristics
                 const ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues).catch(e => send(e));
+                // how many characteristics discovered
                 characteristicNumber = Object.keys(ALL.characteristics).length;
                 node.log(ALL.characteristics);
+                node.log('Characteristics count: ' + characteristicNumber);
                 for (const [key, character] of Object.entries(ALL.characteristics)) {
-                    character.on('data', (data) => { 
-                        if (character.uuid === '2a6d') {
-                            dataObject[character.name] = data.readUInt32LE();
-                            counterPres++;
-                        } else if (character.uuid === '2a6e') {
-                            data = data.readUInt16LE() * decimalSetter[0];
-                            dataObject[character.name] = data.toFixed(2);
-                            counterTemp++;
-                        } else if (character.uuid === '2a6f') {
-                            data = data.readUInt16LE() * decimalSetter[0];
-                            dataObject[character.name] = data.toFixed(2);
-                            counterHum++;
-                        } else if (character.uuid === '2101') {
-                            data = data.readInt16LE() * decimalSetter[0];
-                            dataObject[character.name] = data.toFixed(2);
-                            send(dataObject);
-                        }
-                        total = counterHum + counterPres + counterTemp;
-                        if ( total % characteristicNumber == 0 && total !== 0){
-                            send(dataObject);
-                        }
-                      });
+                    // Check the notify bit, if not set, set it. //
+
                     if (character.properties.includes("notify")) {
-                        character.discoverDescriptors ( (error, descriptors) => {
-                            if (error) {
-                                node.log(error);
+                        const descriptors = await character.discoverDescriptorsAsync().catch(e => send(e));
+                        for (const [key, descriptor] of Object.entries(descriptors)) {
+                            node.log(descriptor);
+                            let descriptorData = await descriptor.readValueAsync().catch(e => send(e));
+                            if (descriptorData[0] === bufferChecker[0] || descriptorData[1] === bufferChecker [1]) {
+                                node.log(`The ${character.name} ${character.uuid} notify bit is disabled.`);
+                                node.log("Enabling notification bit...");
+                                descriptor.writeValueAsync(notifySetter).catch(e => send(e));
+                                node.log (`Notification for ${character.name} characteristic is enabled.`);
                             } else {
-                                for (const [key, descriptor] of Object.entries(descriptors)) {
-                                    descriptor.readValue( (error, data) => {
-                                        if(error){
-                                            node.log(error);
-                                        } else if (data[0] === bufferChecker[0] || data[1] === bufferChecker [1]) {
-                                            node.log(`The ${character.name} ${character.uuid} notify bit is disabled.`);
-                                            node.log("Enabling notification bit...");
-                                            descriptor.writeValue(notifySetter, (error) => {
-                                                if (error) {
-                                                    node.log(error);
-                                                } else {
-                                                    node.log (`Notification for ${character.name} characteristic is enabled.`);
-                                                }
-                                            }); 
-                                        } else {
-                                            node.log(`The ${character.name} ${character.uuid} notify bit is already enabled.`);
-                                            return;
-                                        }
-                                    });
-                                }
+                                node.log(`The ${character.name} ${character.uuid} notify bit is already enabled.`);
+                                return;
                             }
-                        });
+                        }
                     } else {
-                        send(`Notification is not allowed for ${character.name} characteristic.`)
+                        node.log(`Notification is not allowed for ${character.name} characteristic.`)
                     }
                 }
+
+                for (const [key, character] of Object.entries(ALL.characteristics)) {
+                    character.on('data', (data) => {
+                        if (character.uuid === '2a6d' && data !== undefined) {
+                            data = data.readUInt32LE() * decimalSetter[1];
+                            environmentalData.payload[character.name] = data.toFixed(2);
+                            counterPres++;
+                        } else if (character.uuid === '2a6e' && data !== undefined) {
+                            data = data.readUInt16LE() * decimalSetter[0];
+                            environmentalData.payload[character.name] = data.toFixed(2);
+                            counterTemp++;
+                        } else if (character.uuid === '2a6f' && data !== undefined) {
+                            data = data.readUInt16LE() * decimalSetter[0];
+                            environmentalData.payload[character.name] = data.toFixed(2);
+                            counterHum++;
+                        } else if (character.uuid === '5543e32e51ca11ecbf630242ac130002' && data !== undefined ) {
+                            let dataGrouped = splitToChunks(data.toJSON().data, 3);
+                            let dataGroupedFloat = bufferToFloat(dataGrouped);
+                            accData.payload['accX'] = dataGroupedFloat[0];
+                            accData.payload['accY'] = dataGroupedFloat[1];
+                            accData.payload['accZ'] = dataGroupedFloat[2];
+                            send(accData);
+                            done();
+                        } else if (character.uuid === '5543e55451ca11ecbf630242ac130002' && data !== undefined) {
+                            let dataGrouped = splitToChunks(data.toJSON().data, 3);
+                            let dataGroupedFloat = bufferToFloat(dataGrouped);
+                            gyroData.payload['gyroX'] = dataGroupedFloat[0];
+                            gyroData.payload['gyroY'] = dataGroupedFloat[1];
+                            gyroData.payload['gyroZ'] = dataGroupedFloat[2];
+                            send(gyroData);
+                            done();
+                        } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined) {
+                            let dataGrouped = splitToChunks(data.toJSON().data, 3);
+                            let dataGroupedFloat = bufferToFloat(dataGrouped);
+                            magData.payload['magX'] = dataGroupedFloat[0];
+                            magData.payload['magY'] = dataGroupedFloat[1];
+                            magData.payload['magZ'] = dataGroupedFloat[2];
+                            send(magData);
+                            done();
+                        }
+                        // Sends Temp., Hum., and Pres. data together.
+                        if ( (counterHum + counterPres + counterTemp) % 3 == 0 && (counterHum + counterPres + counterTemp) !== 0){
+                            send(environmentalData);
+                        }
+                      });
+                    // Character data event listener END //
+                }
+
                 done();
             } else if ( input === "disconnect"){
                 await peripheralArray[index].disconnectAsync().catch(e => node.send(e));
@@ -230,6 +273,7 @@ module.exports = function(RED) {
                 send(new Error("Unknown input."));
             }
         };
+        // End of const Input //
 
         node.on('input', INPUT);
 
@@ -239,6 +283,25 @@ module.exports = function(RED) {
             node.status({});
         };
         noble.on('close', CLOSE);
+
+        /*=================================*/
+        // Functions convert received buffer to float.
+        /*=================================*/
+        function splitToChunks(array, parts) {
+            let result = [];
+            for (let i = parts; i > 0; i--) {
+                result.push(array.splice(0, Math.ceil(array.length / i)));
+            }
+        return result;
+        }
+        function bufferToFloat(data) {
+            let result = [];
+            for (let i = 0; i < data.length; i++) {
+            let buffer = Buffer.from(data[i]).readFloatLE(0);
+            result.push(buffer);
+        }
+        return result;
+        }
     }
     RED.nodes.registerType("BLE Connect", BLEConnect);
 
