@@ -1,7 +1,11 @@
 # node-red-contrib-ble-sense
-Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially designed for environmental sensing peripherals such as Arduino Nano 33 BLE Sense.
+Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially designed for environmental sensing peripherals such as [Arduino Nano 33 BLE Sense](https://store-usa.arduino.cc/products/arduino-nano-33-ble-sense).
 
-Example Arduino code is provided in the following path `examples/bleSense/bleSense.ino`.
+Example Arduino code is provided at following path `examples/bleSense/bleSense.ino`.
+
+You MUST use same UUIDs that are given in the example Arduino script to convert received data. 
+
+`hci0` is accepted as default adapter. Multiple adapter support will be added later. 
 
 # Installation
 
@@ -11,7 +15,7 @@ npm install node-red-contrib-ble-sense
 
 # Prerequisite
 
-Requires [@abandonware/noble: 1.9.2-14.](https://www.npmjs.com/package/@abandonware/noble).
+Requires [@abandonware/noble: 1.9.2-15.](https://www.npmjs.com/package/@abandonware/noble).
 
 # Quick Start
 
@@ -71,6 +75,7 @@ author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and
 
 # Known Bugs
 
+- Sadly BlueZ is full of bugs. Hence, based on your setup (e.g., kernel version), you might not able get a desired result. 
 - BLE Scanner status is not changing properly after establishing the first connection.
 - To reconnect, we need to wait around 10 secs after disconnnecting. Otherwise the connection drops.
 
