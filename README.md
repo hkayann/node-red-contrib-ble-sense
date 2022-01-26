@@ -1,5 +1,5 @@
 # node-red-contrib-ble-sense
-Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially designed for environmental sensing peripherals such as [Arduino Nano 33 BLE Sense](https://store-usa.arduino.cc/products/arduino-nano-33-ble-sense).
+Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially designed for microcontrollers such as [Arduino Nano 33 BLE Sense](https://store-usa.arduino.cc/products/arduino-nano-33-ble-sense) but should be working well with other central devices.
 
 Example Arduino code is provided at following path `examples/bleSense/bleSense.ino`.
 
