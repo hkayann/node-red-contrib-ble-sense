@@ -7,6 +7,17 @@ You MUST use same UUIDs that are given in the example Arduino script to convert 
 
 `hci0` is accepted as default adapter. Multiple adapter support will be added later. 
 
+# Permissions
+
+To run without `sudo` run the following:
+
+```
+sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
+```
+
+This grants the `node` binary `cap_net_raw` privileges, so it can start/stop BLE advertising.
+
+
 # Installation
 
 ```
