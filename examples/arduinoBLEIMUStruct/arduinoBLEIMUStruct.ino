@@ -234,7 +234,7 @@ void bleTask()
   }
 
   if (magData.updated) {
-    // Bluetooth does not define accelerometer UUID
+    // Bluetooth does not define magnetometer
     // Units in uT
     int16_t mag_X = round(magData.values[0] * 100.0);
     int16_t mag_Y = round(magData.values[1] * 100.0);
