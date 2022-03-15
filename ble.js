@@ -125,6 +125,7 @@ module.exports = function(RED) {
         let node = this;
         node.config = config;
         node.subscribe = config.subscribe;
+        node.micro = config.micro;
         
         const bufferChecker = Buffer.from([0, 0]);
         const notifySetter = Buffer.from([1, 0]); 
@@ -146,22 +147,28 @@ module.exports = function(RED) {
             node.send(new Error(`Key names should be "services" and "characteristics".`));
         }
 
-        let environmentalData = {};
+        let environmentalData = {}; 
         environmentalData.payload = {};
-        var accData = {};
-        var gyroData = {};
-        var magData = {};
-        accData.payload = {
+        let arduinoData = {};
+        arduinoData.payload = {
             "accX": 0,
             "accY": 0,
-            "accZ": 0
-        };
-        gyroData.payload = {
+            "accZ": 0,
             "gyroX": 0,
             "gyroY": 0,
-            "gyroZ": 0
+            "gyroZ": 0,
+            "magX": 0,
+            "magY": 0,
+            "magZ": 0
         };
-        magData.payload = {
+        let adafruitData = {};
+        adafruitData.payload = {
+            "accX": 0,
+            "accY": 0,
+            "accZ": 0,
+            "gyroX": 0,
+            "gyroY": 0,
+            "gyroZ": 0,
             "magX": 0,
             "magY": 0,
             "magZ": 0
@@ -170,11 +177,13 @@ module.exports = function(RED) {
         let counterTemp = 0;
         let counterHum = 0;
         let counterPres = 0;
-        let counterAccX = 0;
-        let counterAccY = 0;
-        let counterAccZ = 0;
+        let counterArduinoAcc = 0;
+        let counterArduinoGyro = 0;
+        let counterArduinoMag = 0;
+        let counterAdafruitAcc = 0;
+        let counterAdafruitGyro = 0;
+        let counterAdafruitMag = 0;
         let characteristicNumber = 0;
-        
         // Start const INPUT
         const INPUT = async (msg, send, done) => {
     
@@ -186,7 +195,7 @@ module.exports = function(RED) {
             } else if (vars.macArray.includes(input)) {
                 index = macArray.indexOf(input);
                 await noble.stopScanningAsync().catch(e => send(e));
-                await peripheralArray[index].connectAsync().catch(e => send(e)); 
+                await peripheralArray[index].connectAsync().catch(e => send(e));
                 node.status( { fill: "green", shape: "ring", text: "Connected." } );
                 // discover all services and characteristics
                 const ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues).catch(e => send(e));
@@ -194,9 +203,9 @@ module.exports = function(RED) {
                 characteristicNumber = Object.keys(ALL.characteristics).length;
                 node.log(ALL.characteristics);
                 node.log('Characteristics count: ' + characteristicNumber);
+                
                 for (const [key, character] of Object.entries(ALL.characteristics)) {
                     // Check the notify bit, if not set, set it. //
-
                     if (character.properties.includes("notify")) {
                         const descriptors = await character.discoverDescriptorsAsync().catch(e => send(e));
                         for (const [key, descriptor] of Object.entries(descriptors)) {
@@ -206,7 +215,12 @@ module.exports = function(RED) {
                                 node.log(`The ${character.name} ${character.uuid} notify bit is disabled.`);
                                 node.log("Enabling notification bit...");
                                 descriptor.writeValueAsync(notifySetter).catch(e => send(e));
-                                node.log (`Notification for ${character.name} characteristic is enabled.`);
+                                if (character.name !== null){
+                                    node.log (`Notification for ${character.name} characteristic is enabled.`);
+                                } else {
+                                    node.log (`Notification for custom characteristic is enabled.`);
+                                };
+                    
                             } else {
                                 node.log(`The ${character.name} ${character.uuid} notify bit is already enabled.`);
                                 return;
@@ -215,7 +229,7 @@ module.exports = function(RED) {
                     } else {
                         node.log(`Notification is not allowed for ${character.name} characteristic.`)
                     }
-                }
+                };
 
                 for (const [key, character] of Object.entries(ALL.characteristics)) {
                     character.on('data', (data) => {
@@ -231,35 +245,62 @@ module.exports = function(RED) {
                             data = data.readUInt16LE() * decimalSetter[0];
                             environmentalData.payload[character.name] = data.toFixed(2);
                             counterHum++;
-                        } else if (character.uuid === '5543e32e51ca11ecbf630242ac130002' && data !== undefined ) {
+                        } else if (character.uuid === '5543e32e51ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
                             let dataGroupedFloat = bufferToFloat(dataGrouped);
-                            accData.payload['accX'] = dataGroupedFloat[0];
-                            accData.payload['accY'] = dataGroupedFloat[1];
-                            accData.payload['accZ'] = dataGroupedFloat[2];
-                            send(accData);
-                            done();
-                        } else if (character.uuid === '5543e55451ca11ecbf630242ac130002' && data !== undefined) {
+                            arduinoData.payload['accX'] = dataGroupedFloat[0];
+                            arduinoData.payload['accY'] = dataGroupedFloat[1];
+                            arduinoData.payload['accZ'] = dataGroupedFloat[2];
+                            counterArduinoAcc++;
+                        } else if (character.uuid === '5543e32e51ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
+                            let dataString = Buffer.from(data).toString();
+                            let dataArray = dataString.split(',');
+                            adafruitData.payload['accX'] = parseFloat(dataArray[0]);
+                            adafruitData.payload['accY'] = parseFloat(dataArray[1]);
+                            adafruitData.payload['accZ'] = parseFloat(dataArray[2]);
+                            counterAdafruitAcc++;
+                        } else if (character.uuid === '5543e55451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
                             let dataGroupedFloat = bufferToFloat(dataGrouped);
-                            gyroData.payload['gyroX'] = dataGroupedFloat[0];
-                            gyroData.payload['gyroY'] = dataGroupedFloat[1];
-                            gyroData.payload['gyroZ'] = dataGroupedFloat[2];
-                            send(gyroData);
-                            done();
-                        } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined) {
+                            arduinoData.payload['gyroX'] = dataGroupedFloat[0];
+                            arduinoData.payload['gyroY'] = dataGroupedFloat[1];
+                            arduinoData.payload['gyroZ'] = dataGroupedFloat[2];
+                            counterArduinoGyro++;
+                        } else if (character.uuid === '5543e55451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
+                            let dataString = Buffer.from(data).toString();
+                            let dataArray = dataString.split(',');
+                            adafruitData.payload['gyroX'] = parseFloat(dataArray[0]);
+                            adafruitData.payload['gyroY'] = parseFloat(dataArray[1]);
+                            adafruitData.payload['gyroZ'] = parseFloat(dataArray[2]);
+                            counterAdafruitGyro++;
+                        } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
                             let dataGroupedFloat = bufferToFloat(dataGrouped);
                             magData.payload['magX'] = dataGroupedFloat[0];
                             magData.payload['magY'] = dataGroupedFloat[1];
                             magData.payload['magZ'] = dataGroupedFloat[2];
-                            send(magData);
-                            done();
+                            counterArduinoMag++;
+                        } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
+                            let dataString = Buffer.from(data).toString();
+                            let dataArray = dataString.split(',');
+                            adafruitData.payload['magX'] = parseFloat(dataArray[0]);
+                            adafruitData.payload['magY'] = parseFloat(dataArray[1]);
+                            adafruitData.payload['magZ'] = parseFloat(dataArray[2]);
+                            counterAdafruitMag++;
                         }
-                        // Sends Temp., Hum., and Pres. data together.
+                        // Send data to Node-RED after we read all given characteristics.
                         if ( (counterHum + counterPres + counterTemp) % 3 == 0 && (counterHum + counterPres + counterTemp) !== 0){
                             send(environmentalData);
-                        }
+                            done();
+                        };
+                        if ( (counterArduinoAcc + counterArduinoGyro + counterArduinoMag) % 3 == 0 && (counterArduinoAcc + counterArduinoGyro + counterArduinoMag) !== 0){
+                            send(arduinoData);
+                            done();
+                        };
+                        if ( (counterAdafruitAcc + counterAdafruitGyro + counterAdafruitMag) % 3 == 0 && (counterAdafruitAcc + counterAdafruitGyro + counterAdafruitMag) !== 0){
+                            send(adafruitData);
+                            done();
+                        };
                       });
                     // Character data event listener END //
                 }
@@ -284,9 +325,9 @@ module.exports = function(RED) {
         };
         noble.on('close', CLOSE);
 
-        /*=================================*/
+        /*============================================*/
         // Functions convert received buffer to float.
-        /*=================================*/
+        /*============================================*/
         function splitToChunks(array, parts) {
             let result = [];
             for (let i = parts; i > 0; i--) {
@@ -304,5 +345,4 @@ module.exports = function(RED) {
         }
     }
     RED.nodes.registerType("BLE Connect", BLEConnect);
-
 }

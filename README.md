@@ -1,9 +1,9 @@
 # node-red-contrib-ble-sense
-Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially designed for microcontrollers such as [Arduino Nano 33 BLE Sense](https://store-usa.arduino.cc/products/arduino-nano-33-ble-sense) but should be working well with other central devices.
+Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially designed to connect microcontrollers such as [Arduino Nano 33 BLE Sense](https://store-usa.arduino.cc/products/arduino-nano-33-ble-sense) but should be working well with other central devices.
 
-Example Arduino code is provided at following path `examples/bleSense/bleSense.ino`.
+Example peripheral codes are provided in **examples** folder.
 
-You MUST use same UUIDs that are given in the example Arduino script to convert received data. 
+You **MUST USE SAME UUIDs** that are given in example scripts to convert received data. 
 
 `hci0` is accepted as default adapter. Multiple adapter support will be added later. 
 
@@ -71,7 +71,7 @@ Licensed under the MIT [License](LICENSE).
 
 # Cite
 
-Please cite the following work if you are making use of this package academically.
+Please cite the following work if you use this package academically.
 
 @article{KAYAN2021100437,<br />
 title = {AnoML-IoT: An end to end re-configurable multi-protocol anomaly detection pipeline for Internet of Things},<br />
@@ -86,7 +86,7 @@ author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and
 
 # Known Bugs
 
-- Sadly BlueZ is full of bugs. Hence, based on your setup (e.g., kernel version), you might not able get a desired result. 
+- Based on your setup (e.g., BlueZ version, kernel version), you might not able get a desired result. 
 - BLE Scanner status is not changing properly after establishing the first connection.
 - To reconnect, we need to wait around 10 secs after disconnnecting. Otherwise the connection drops.
 

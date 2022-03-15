@@ -59,7 +59,7 @@
 </script>
 
 <script type="text/html" data-help-name="BLE Scanner">
-    <p>BLE Central node that enables BLE communication with a peripharel.</p>
+    <p>BLE Central node that enables BLE communication with peripherals.</p>
     <h3>Configuration</h3>
     <dl class="message-properties">
         <dt class="optional">Name <span class="property-type">string</span></dt><dd>Appoint a name to identify your node.</dd>
@@ -81,12 +81,14 @@
 <!-- BLE CONNECT -->
 <script type="text/javascript">
     var defaultSubscribe = '{"services": [], "characteristics": []}';
+    var defaultMicrocontroller = "Arduino"
     RED.nodes.registerType('BLE Connect',{
         category: 'BLE Sense',
         color: '#66F3FF',
         defaults: {
             name: {value:""},
-            subscribe: {value:defaultSubscribe}
+            subscribe: {value:defaultSubscribe},
+            micro:{value:defaultMicrocontroller}
         },
         inputs:1,
         outputs:1,
@@ -99,6 +101,15 @@
                 type:"json",
                 types:["json"]
             });
+            $("#node-input-micro").typedInput({
+                types:[
+                    {
+                        value: "Micro",
+                        label: "",
+                        options: ["Arduino", "Adafruit"]
+                    }],
+                typeField: $("#node-input-microType")
+            });
         }
     });
 </script>
@@ -110,6 +121,10 @@
         <h4></h4>
         <label for="node-input-subscribe"><i class="fa fa-commenting"></i>&nbsp;Subscribe</label>
         <input type="text" id="node-input-subscribe">
+        <h4></h4>
+        <label for="node-input-micro"><i class="fa fa-microchip"></i>&nbsp;Controller</label>
+        <input type="text" id="node-input-micro">
+        <input type="hidden" id="node-input-microType">
     </div>
 </script>
 
