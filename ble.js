@@ -29,15 +29,15 @@ module.exports = function(RED) {
         noble.removeAllListeners('scanStart');
         noble.removeAllListeners('close');
  
-        const STOPSCAN = () => {
-            node.status( { fill: "red", shape: "dot", text: "Scan stopped." } );
-        };
-        noble.on('scanStop', STOPSCAN);
+        // const STOPSCAN = () => {
+        //     node.status( { fill: "red", shape: "dot", text: "Scan stopped." } );
+        // };
+        // noble.on('scanStop', STOPSCAN);
 
-        const STARTSCAN = () => {
-            node.status( { fill: "green", shape: "ring", text: "Scanning." } )
-        };
-        noble.on('scanStart', STARTSCAN);
+        // const STARTSCAN = () => {
+        //     node.status( { fill: "green", shape: "ring", text: "Scanning." } )
+        // };
+        // noble.on('scanStart', STARTSCAN);
 
         const STATE = (state) => {
             if (noble.state === "poweredOn") {
@@ -46,6 +46,22 @@ module.exports = function(RED) {
                 node.error(" The Bluetooth adapter state is:", state);
             }
         };
+
+        function STARTSCAN () {
+            console.log("scanStart", node, node.status);
+            node.status( { fill: "green", shape: "ring", text: "Scanning." } )
+        };
+        function STOPSCAN () {
+            console.log("scanStop", node, node.status);
+            node.status( { fill: "red", shape: "dot", text: "Scan stopped." } );
+        };
+
+        noble.on('scanStop', function() {
+            STOPSCAN();
+        });
+        noble.on('scanStart', function() {
+            STARTSCAN();
+        });
 
         const PERIPHERAL = (peripheral) => {
             const ADVERTISEMENT = peripheral.advertisement;
@@ -194,11 +210,26 @@ module.exports = function(RED) {
                 send(new Error("Peripheral object is null."));
             } else if (vars.macArray.includes(input)) {
                 index = macArray.indexOf(input);
-                await noble.stopScanningAsync().catch(e => send(e));
-                await peripheralArray[index].connectAsync().catch(e => send(e));
+                try {
+                  var e = await noble.stopScanningAsync()
+                  send(e)
+                } catch(err) {
+                  done(err)
+                };
+                try {
+                  var e = await peripheralArray[index].connectAsync()
+                  send(e)
+                } catch(err) {
+                  done(err)
+                };
                 node.status( { fill: "green", shape: "ring", text: "Connected." } );
                 // discover all services and characteristics
-                const ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues).catch(e => send(e));
+                try {
+                  var ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues);
+                  send(ALL)
+                } catch(err) {
+                  done(err)
+                }
                 // how many characteristics discovered
                 characteristicNumber = Object.keys(ALL.characteristics).length;
                 node.log(ALL.characteristics);
@@ -207,14 +238,14 @@ module.exports = function(RED) {
                 for (const [key, character] of Object.entries(ALL.characteristics)) {
                     // Check the notify bit, if not set, set it. //
                     if (character.properties.includes("notify")) {
-                        const descriptors = await character.discoverDescriptorsAsync().catch(e => send(e));
+                        const descriptors = await character.discoverDescriptorsAsync();
                         for (const [key, descriptor] of Object.entries(descriptors)) {
                             node.log(descriptor);
-                            let descriptorData = await descriptor.readValueAsync().catch(e => send(e));
+                            let descriptorData = await descriptor.readValueAsync();
                             if (descriptorData[0] === bufferChecker[0] || descriptorData[1] === bufferChecker [1]) {
                                 node.log(`The ${character.name} ${character.uuid} notify bit is disabled.`);
                                 node.log("Enabling notification bit...");
-                                descriptor.writeValueAsync(notifySetter).catch(e => send(e));
+                                descriptor.writeValueAsync(notifySetter);
                                 if (character.name !== null){
                                     node.log (`Notification for ${character.name} characteristic is enabled.`);
                                 } else {
@@ -276,9 +307,9 @@ module.exports = function(RED) {
                         } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
                             let dataGroupedFloat = bufferToFloat(dataGrouped);
-                            magData.payload['magX'] = dataGroupedFloat[0];
-                            magData.payload['magY'] = dataGroupedFloat[1];
-                            magData.payload['magZ'] = dataGroupedFloat[2];
+                            arduinoData.payload['magX'] = dataGroupedFloat[0];
+                            arduinoData.payload['magY'] = dataGroupedFloat[1];
+                            arduinoData.payload['magZ'] = dataGroupedFloat[2];
                             counterArduinoMag++;
                         } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
                             let dataString = Buffer.from(data).toString();
