@@ -3,9 +3,9 @@ Node-RED central module for Bluetooth Low Energy (BLE) devices. Speficially desi
 
 Example peripheral codes are provided in **examples** folder.
 
-You **MUST USE SAME UUIDs** that are given in example scripts to convert received data. 
+You **MUST USE SAME UUIDs** that are given in example scripts to convert received data.
 
-`hci0` is accepted as default adapter. Multiple adapter support will be added later. 
+`hci0` is accepted as default adapter. Multiple adapter support will be added later.
 
 # Permissions
 
@@ -43,7 +43,7 @@ To stop scanning a message with **stop** topic should be given.
 **BLE Connect** node provides direct connection to the peripheral. This node must not be used alone. The scanning should be in progress to establish a connection.
 It takes JSON Object as an input. The service and characteristics UUIDs should be provided. If not, it will try to subscribe all advertised characteristics.
 
-The example input is shown below: 
+The example input is shown below:
 ```
 {
     "services": [
@@ -86,8 +86,7 @@ author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and
 
 # Known Bugs
 
-- Based on your setup (e.g., BlueZ version, kernel version), you might not able get a desired result. 
+- Based on your setup (e.g., BlueZ version, kernel version), you might not able get a desired result.
 - BLE Scanner status is not changing properly after establishing the first connection.
 - To reconnect, we need to wait around 10 secs after disconnnecting. Otherwise the connection drops.
-
-
+- Nicla Sense ME might drop a connection.
