@@ -12,10 +12,17 @@
 // BLE UUIDS
 //----------------------------------------------------------------------------------------------------------------------
 
+// IMU UUIDS
 #define BLE_UUID_IMU_SERVICE              "5543e0d651ca11ecbf630242ac130002"
 #define BLE_UUID_ACC_CHAR                 "5543e32e51ca11ecbf630242ac130002"
 #define BLE_UUID_GYRO_CHAR                "5543e55451ca11ecbf630242ac130002"
 #define BLE_UUID_MAG_CHAR                 "5543e64451ca11ecbf630242ac130002"
+
+// ENV UUIDS
+#define BLE_UUID_ENVIRONMENTAL_SENSING_SERVICE    "181A"
+#define BLE_UUID_TEMPERATURE                      "2A6E"
+#define BLE_UUID_HUMIDITY                         "2A6F"
+#define BLE_UUID_PRESSURE                         "2A6D"
 
 //----------------------------------------------------------------------------------------------------------------------
 // APP & I/O
@@ -23,27 +30,47 @@
 
 //#define NUMBER_OF_SENSORS 3
 
-#define ACC_SENSOR_UPDATE_INTERVAL                (500) // node-red-dashboard can't handle 1 ms, can handle 100 ms.
-#define MAG_SENSOR_UPDATE_INTERVAL                (500)
-#define GYRO_SENSOR_UPDATE_INTERVAL               (500)
+//#define ACC_SENSOR_UPDATE_INTERVAL                (500) // node-red-dashboard can't handle 1 ms, can handle 100 ms.
+//#define MAG_SENSOR_UPDATE_INTERVAL                (500)
+//#define GYRO_SENSOR_UPDATE_INTERVAL               (500)
 
-union sensor_data {
+#define IMU_UPDATE_INTERVAL                         (500)
+#define ENV_UPDATE_INTERVAL                         (500)
+
+// IMU parameters
+union imu_data {
   struct __attribute__((packed)) {
     float values[3]; // float array for data (it holds 3)
     bool updated = false;
   };
   uint8_t bytes[3 * sizeof(float)]; // size as byte array 
 };
-
-union sensor_data accData;
-union sensor_data gyroData;
-union sensor_data magData;
+union imu_data accData;
+union imu_data gyroData;
+union imu_data magData;
 
 SensorXYZ accelerometer(SENSOR_ID_ACC);
 SensorXYZ gyro(SENSOR_ID_GYRO);
 SensorXYZ mag(SENSOR_ID_MAG);
 
 float accX, accY, accZ, gyroX, gyroY, gyroZ, magX, magY, magZ;
+
+// ENV parameters
+typedef struct __attribute__( ( packed ) )
+{
+  float temperatureValue;
+  float humidityValue;
+  float pressureValue;
+  bool updated = false;
+} env_data_t;
+
+env_data_t envData;
+
+Sensor temperature(SENSOR_ID_TEMP);
+Sensor humidity(SENSOR_ID_HUM);
+Sensor pressure(SENSOR_ID_BARO);
+
+float temp, hum, pres;
 
 //const int BLE_LED_PIN = LED_BUILTIN;
 //const int RSSI_LED_PIN = LED_PWR;
@@ -58,6 +85,11 @@ BLEService IMUService(BLE_UUID_IMU_SERVICE);
 BLECharacteristic accCharacteristic(BLE_UUID_ACC_CHAR, BLERead | BLENotify, sizeof accData.bytes);
 BLECharacteristic gyroCharacteristic(BLE_UUID_GYRO_CHAR, BLERead | BLENotify, sizeof gyroData.bytes);
 BLECharacteristic magCharacteristic(BLE_UUID_MAG_CHAR, BLERead | BLENotify, sizeof magData.bytes);
+
+BLEService environmentalSensingService( BLE_UUID_ENVIRONMENTAL_SENSING_SERVICE );
+BLEShortCharacteristic temperatureCharacteristic( BLE_UUID_TEMPERATURE, BLERead | BLENotify );
+BLEUnsignedShortCharacteristic humidityCharacteristic( BLE_UUID_HUMIDITY, BLERead | BLENotify );
+BLEUnsignedLongCharacteristic pressureCharacteristic( BLE_UUID_PRESSURE, BLERead | BLENotify );
 
 #define BLE_LED_PIN                               LED_BUILTIN
 
@@ -75,12 +107,6 @@ void setup()
   digitalWrite(BLE_LED_PIN, LOW);
   initialize();
   
-  // write initial value
-  for (int i = 0; i < 3; i++) {
-    accData.values[i] = i;
-    gyroData.values[i] = i;
-    magData.values[i] = i;
-  }
 }
 
 void loop() {
@@ -96,6 +122,9 @@ void loop() {
   if (magSensorTask()){
     magPrintTask();
   }
+  if (envSensorTask()){
+    envPrintTask();
+  }
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -110,7 +139,7 @@ void loop() {
 bool accSensorTask() {
   static long previousMillis2 = 0;
   unsigned long currentMillis2 = millis();
-  if (currentMillis2 - previousMillis2 < ACC_SENSOR_UPDATE_INTERVAL) {
+  if (currentMillis2 - previousMillis2 < IMU_UPDATE_INTERVAL) {
     return false;
   }
   previousMillis2 = currentMillis2;
@@ -135,7 +164,7 @@ bool accSensorTask() {
 bool gyroSensorTask() {
   static long previousMillis2 = 0;
   unsigned long currentMillis2 = millis();
-  if (currentMillis2 - previousMillis2 < GYRO_SENSOR_UPDATE_INTERVAL) {
+  if (currentMillis2 - previousMillis2 < IMU_UPDATE_INTERVAL) {
     return false;
   }
   previousMillis2 = currentMillis2;
@@ -159,7 +188,7 @@ bool gyroSensorTask() {
 bool magSensorTask() {
   static long previousMillis3 = 0;
   unsigned long currentMillis3 = millis();
-  if (currentMillis3 - previousMillis3 < MAG_SENSOR_UPDATE_INTERVAL) {
+  if (currentMillis3 - previousMillis3 < IMU_UPDATE_INTERVAL) {
     return false;
   }
   previousMillis3 = currentMillis3;
@@ -178,6 +207,22 @@ bool magSensorTask() {
   magData.updated = true;
   
   return magData.updated;
+}
+
+bool envSensorTask() {
+  static long previousMillis4 = 0;
+  unsigned long currentMillis4 = millis();
+  if (currentMillis4 - previousMillis4 < ENV_UPDATE_INTERVAL) {
+    return false;
+  }
+  previousMillis4 = currentMillis4;
+   
+  envData.temperatureValue = temperature.value();
+  envData.humidityValue = humidity.value();
+  envData.pressureValue = pressure.value();
+  envData.updated = true;
+
+  return envData.updated;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -199,20 +244,30 @@ bool setupBleMode() {
   BLE.setDeviceName(BLE_DEVICE_NAME);
   BLE.setLocalName(BLE_LOCAL_NAME);
   BLE.setAdvertisedService(IMUService);
-
+  BLE.setAdvertisedService( environmentalSensingService );
+  
   // BLE add characteristics
   IMUService.addCharacteristic(accCharacteristic);
   IMUService.addCharacteristic(gyroCharacteristic);
   IMUService.addCharacteristic(magCharacteristic);
 
+  // BLE add characteristics
+  environmentalSensingService.addCharacteristic(temperatureCharacteristic);
+  environmentalSensingService.addCharacteristic(humidityCharacteristic);
+  environmentalSensingService.addCharacteristic(pressureCharacteristic);
+  
   // add service
   BLE.addService(IMUService);
+  BLE.addService(environmentalSensingService);
 
   // set the initial value for the characteristic:
   accCharacteristic.writeValue(accData.bytes, sizeof accData.bytes);
   gyroCharacteristic.writeValue(gyroData.bytes, sizeof gyroData.bytes);
   magCharacteristic.writeValue(magData.bytes, sizeof magData.bytes);
-
+  temperatureCharacteristic.writeValue(0);
+  humidityCharacteristic.writeValue(0);
+  pressureCharacteristic.writeValue(0);
+  
   // set BLE event handlers
   BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
@@ -261,6 +316,22 @@ void bleTask()
     magCharacteristic.writeValue(magData.bytes, sizeof magData.bytes);
     magData.updated = false;
   }
+
+    if ( envData.updated )
+  {
+    // Unit is in degrees Celsius with a resolution of 0.01 degrees Celsius
+    int16_t temperature = round(envData.temperatureValue * 100.0);
+    temperatureCharacteristic.writeValue(temperature);
+
+    // Unit is in percent with a resolution of 0.01 percent
+    uint16_t humidity = round(envData.humidityValue * 100.0);
+    humidityCharacteristic.writeValue(humidity);
+
+    // Unit is in Pascal with a resolution of 0.1 Pa
+    uint32_t pressure = round(envData.pressureValue * 10.0);
+    pressureCharacteristic.writeValue(pressure);
+    envData.updated = false;
+  }
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -285,7 +356,7 @@ void accPrintTask() {
   Serial.println(" G");
 
   Serial.print("Acc. Subscription Status: ");
-  Serial.println(accCharacteristic.subscribed());
+  //Serial.println(accCharacteristic.subscribed());
 }
 
 void gyroPrintTask() {
@@ -302,7 +373,7 @@ void gyroPrintTask() {
   Serial.println(" dps");
 
   Serial.print("Gyro. Subscription Status: ");
-  Serial.println(gyroCharacteristic.subscribed());
+  //Serial.println(gyroCharacteristic.subscribed());
 }
 
 void magPrintTask() {
@@ -319,8 +390,24 @@ void magPrintTask() {
   Serial.println(" uT");
 
   Serial.print("Mag. Subscription Status: ");
-  Serial.println(magCharacteristic.subscribed());
+  //Serial.println(magCharacteristic.subscribed());
 }
+
+void envPrintTask()
+{
+  Serial.print("Temperature = ");
+  Serial.print(envData.temperatureValue);
+  Serial.println( " °C" );
+
+  Serial.print("Humidity    = ");
+  Serial.print(envData.humidityValue);
+  Serial.println(" %");
+
+  Serial.print("Pressure = ");
+  Serial.print(envData.pressureValue);
+  Serial.println( " Pa" );
+}
+
 
 //----------------------------------------------------------------------------------------------------------------------
 // Event Handlers & Initializers
@@ -359,9 +446,31 @@ void initialize() {
     Serial.println("Failed to initialize magnetometer!");
     while (1);
   }
+  if (!temperature.begin()) {
+    Serial.println("Failed to initialize temperature!");
+    while (1);
+  }
+  if (!humidity.begin()) {
+    Serial.println("Failed to initialize humidity!");
+    while (1);
+  }
+  if (!pressure.begin()) {
+    Serial.println("Failed to initialize pressure!");
+    while (1);
+  }
   if (!setupBleMode()) {
     while (1);
   } else {
     Serial.println("BLE initialized. Waiting for clients to connect.");
   }
+  
+  // write initial values
+  for (int i = 0; i < 3; i++) {
+    accData.values[i] = i;
+    gyroData.values[i] = i;
+    magData.values[i] = i;
+  }
+  temp = 0.0;
+  hum = 0.0;
+  pres = 0.0;
 }

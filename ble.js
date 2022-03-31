@@ -1,11 +1,9 @@
-module.exports = function(RED) {
+module.exports = function (RED) {
 
     /*==========================*/
     // BLE Scanner Node         //
     /*==========================*/
-
     "use strict";
-
     //const EventEmitter = require('events');
     require('events').defaultMaxListeners = 50;
     //EventEmitter.defaultMaxListeners = 50;
@@ -28,7 +26,7 @@ module.exports = function(RED) {
         noble.removeAllListeners('input');
         noble.removeAllListeners('scanStart');
         noble.removeAllListeners('close');
- 
+
         // const STOPSCAN = () => {
         //     node.status( { fill: "red", shape: "dot", text: "Scan stopped." } );
         // };
@@ -42,27 +40,27 @@ module.exports = function(RED) {
         const STATE = (state) => {
             if (noble.state === "poweredOn") {
                 noble.startScanning([], true);
-            } else{
+            } else {
                 node.error(" The Bluetooth adapter state is:", state);
             }
         };
-
-        function STARTSCAN () {
+        // Set event listeners for scanner
+        function STARTSCAN() {
             console.log("scanStart", node, node.status);
-            node.status( { fill: "green", shape: "ring", text: "Scanning." } )
+            node.status({ fill: "green", shape: "ring", text: "Scanning." })
         };
-        function STOPSCAN () {
-            console.log("scanStop", node, node.status);
-            node.status( { fill: "red", shape: "dot", text: "Scan stopped." } );
-        };
-
-        noble.on('scanStop', function() {
-            STOPSCAN();
-        });
-        noble.on('scanStart', function() {
+        noble.on('scanStart', function () {
             STARTSCAN();
         });
-
+        function STOPSCAN() {
+            console.log("scanStop", node, node.status);
+            node.status({ fill: "red", shape: "dot", text: "Scan stopped." });
+        };
+        noble.on('scanStop', function () {
+            STOPSCAN();
+        });
+        // END
+        // Set event listener for peripheral
         const PERIPHERAL = (peripheral) => {
             const ADVERTISEMENT = peripheral.advertisement;
             const MAC = peripheral.address;
@@ -74,41 +72,42 @@ module.exports = function(RED) {
                 peripheralArray.push(peripheral);
             }
             const OUTPUT = () => {
-                switch (node.output){
+                switch (node.output) {
                     case 'MAC':
-                        return node.send({payload:MAC});
+                        return node.send({ payload: MAC });
                     case 'Peripheral':
-                        return node.send({payload:JSON.parse(peripheral)});
+                        return node.send({ payload: JSON.parse(peripheral) });
                     case 'Data':
-                        if(ADVERTISEMENT.serviceData[0]){
+                        if (ADVERTISEMENT.serviceData[0]) {
                             if (ADVERTISEMENT.serviceData[0].data) {
-                                return node.send({payload:ADVERTISEMENT.serviceData[0].data});
+                                return node.send({ payload: ADVERTISEMENT.serviceData[0].data });
                             }
                         }
-                        break; 
+                        break;
                 };
             };
-            if (node.searchFor === ""){
+            if (node.searchFor === "") {
                 OUTPUT();
-            } else if (ADVERTISEMENT.localName){
+            } else if (ADVERTISEMENT.localName) {
                 const LOCALNAME = ADVERTISEMENT.localName.toLowerCase();
                 const GIVENNAME = node.searchFor.toLowerCase();
-                if (LOCALNAME === GIVENNAME){
+                if (LOCALNAME == GIVENNAME) {
                     OUTPUT();
                 }
             }
         };
         noble.on('discover', PERIPHERAL);
-
+        // END
+        // Set event listener for scanner input
         const INPUT = (msg, send, done) => {
             let input = msg.topic.toLowerCase()
             if (noble.state === 'poweredOn' && input === "start") {
-                noble.startScanning([], true); 
+                noble.startScanning([], true);
                 done();
-            } else if ( input === "start"){
+            } else if (input === "start") {
                 noble.on('stateChange', STATE);
                 done();
-            } else if ( input === "stop"){
+            } else if (input === "stop") {
                 noble.stopScanning();
                 done();
             } else {
@@ -116,7 +115,8 @@ module.exports = function(RED) {
             }
         };
         node.on('input', INPUT);
-
+        // END
+        // Set event listener on close
         const CLOSE = () => {
             noble.stopScanning();
             noble.removeAllListeners('discover');
@@ -126,8 +126,8 @@ module.exports = function(RED) {
             noble.removeAllListeners('scanStart');
             node.status({});
         };
-
         noble.on('close', CLOSE);
+        // END
     }
     RED.nodes.registerType("BLE Scanner", BLEScanner);
 
@@ -137,34 +137,34 @@ module.exports = function(RED) {
 
     function BLEConnect(config) {
 
-        RED.nodes.createNode(this,config);
+        RED.nodes.createNode(this, config);
         let node = this;
         node.config = config;
         node.subscribe = config.subscribe;
         node.micro = config.micro;
-        
-        const bufferChecker = Buffer.from([0, 0]);
-        const notifySetter = Buffer.from([1, 0]); 
-        const decimalSetter = [0.01, 0.1];
-        
-        try {
-            var inputObject = JSON.parse(node.subscribe); 
-        }
-        catch(e) {
-            node.error("Unparseable JSON Response.", e);
-        } 
 
+        const bufferChecker = Buffer.from([0, 0]);
+        const notifySetter = Buffer.from([1, 0]);
+        const decimalSetter = [0.01, 0.1];
+        // Get and check services and characteristics input
+        try {
+            var inputObject = JSON.parse(node.subscribe);
+        }
+        catch (e) {
+            node.error("Unparseable JSON Response.", e);
+        }
         var inputKeys = Object.keys(inputObject);
-        
         if (inputKeys[0] === "services" && inputKeys[1] === "characteristics") {
             var serviceValues = Object.values(inputObject)[0];
             var characteristicValues = Object.values(inputObject)[1];
         } else {
             node.send(new Error(`Key names should be "services" and "characteristics".`));
         }
-
-        let environmentalData = {}; 
+        // END
+        // Create initial parameters for data
+        let environmentalData = {};
         environmentalData.payload = {};
+
         let arduinoData = {};
         arduinoData.payload = {
             "accX": 0,
@@ -177,18 +177,20 @@ module.exports = function(RED) {
             "magY": 0,
             "magZ": 0
         };
+
         let adafruitData = {};
         adafruitData.payload = {
-            "accX": 0,
-            "accY": 0,
-            "accZ": 0,
-            "gyroX": 0,
-            "gyroY": 0,
-            "gyroZ": 0,
-            "magX": 0,
-            "magY": 0,
-            "magZ": 0
+            "ada_accX": 0,
+            "ada_accY": 0,
+            "ada_accZ": 0,
+            "ada_gyroX": 0,
+            "ada_gyroY": 0,
+            "ada_gyroZ": 0,
+            "ada_magX": 0,
+            "ada_magY": 0,
+            "ada_magZ": 0
         };
+        
         let index;
         let counterTemp = 0;
         let counterHum = 0;
@@ -200,9 +202,10 @@ module.exports = function(RED) {
         let counterAdafruitGyro = 0;
         let counterAdafruitMag = 0;
         let characteristicNumber = 0;
-        // Start const INPUT
+        // END
+        // Set listener for BLE Connect input
         const INPUT = async (msg, send, done) => {
-    
+
             let input = msg.topic.toLowerCase()
             vars.input = input;
 
@@ -211,30 +214,29 @@ module.exports = function(RED) {
             } else if (vars.macArray.includes(input)) {
                 index = macArray.indexOf(input);
                 try {
-                  var e = await noble.stopScanningAsync()
-                  send(e)
-                } catch(err) {
-                  done(err)
+                    let e = await noble.stopScanningAsync()
+                    send(e)
+                } catch (err) {
+                    done(err)
                 };
                 try {
-                  var e = await peripheralArray[index].connectAsync()
-                  send(e)
-                } catch(err) {
-                  done(err)
+                    let e = await peripheralArray[index].connectAsync()
+                    node.status({ fill: "green", shape: "ring", text: "Connected." });
+                    send(e)
+                } catch (err) {
+                    done(err)
                 };
-                node.status( { fill: "green", shape: "ring", text: "Connected." } );
                 // discover all services and characteristics
                 try {
-                  var ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues);
-                  send(ALL)
-                } catch(err) {
-                  done(err)
+                    var ALL = await peripheralArray[index].discoverSomeServicesAndCharacteristicsAsync(serviceValues, characteristicValues);
+                    send(ALL)
+                } catch (err) {
+                    done(err)
                 }
                 // how many characteristics discovered
                 characteristicNumber = Object.keys(ALL.characteristics).length;
                 node.log(ALL.characteristics);
                 node.log('Characteristics count: ' + characteristicNumber);
-                
                 for (const [key, character] of Object.entries(ALL.characteristics)) {
                     // Check the notify bit, if not set, set it. //
                     if (character.properties.includes("notify")) {
@@ -242,16 +244,16 @@ module.exports = function(RED) {
                         for (const [key, descriptor] of Object.entries(descriptors)) {
                             node.log(descriptor);
                             let descriptorData = await descriptor.readValueAsync();
-                            if (descriptorData[0] === bufferChecker[0] || descriptorData[1] === bufferChecker [1]) {
+                            if (descriptorData[0] === bufferChecker[0] || descriptorData[1] === bufferChecker[1]) {
                                 node.log(`The ${character.name} ${character.uuid} notify bit is disabled.`);
                                 node.log("Enabling notification bit...");
                                 descriptor.writeValueAsync(notifySetter);
-                                if (character.name !== null){
-                                    node.log (`Notification for ${character.name} characteristic is enabled.`);
+                                if (character.name !== null) {
+                                    node.log(`Notification for ${character.name} characteristic is enabled.`);
                                 } else {
-                                    node.log (`Notification for custom characteristic is enabled.`);
+                                    node.log(`Notification for custom characteristic is enabled.`);
                                 };
-                    
+
                             } else {
                                 node.log(`The ${character.name} ${character.uuid} notify bit is already enabled.`);
                                 return;
@@ -266,15 +268,15 @@ module.exports = function(RED) {
                     character.on('data', (data) => {
                         if (character.uuid === '2a6d' && data !== undefined) {
                             data = data.readUInt32LE() * decimalSetter[1];
-                            environmentalData.payload[character.name] = data.toFixed(2);
+                            environmentalData.payload[character.name] = parseFloat(data.toFixed(2));
                             counterPres++;
                         } else if (character.uuid === '2a6e' && data !== undefined) {
                             data = data.readUInt16LE() * decimalSetter[0];
-                            environmentalData.payload[character.name] = data.toFixed(2);
+                            environmentalData.payload[character.name] = parseFloat(data.toFixed(2));
                             counterTemp++;
                         } else if (character.uuid === '2a6f' && data !== undefined) {
                             data = data.readUInt16LE() * decimalSetter[0];
-                            environmentalData.payload[character.name] = data.toFixed(2);
+                            environmentalData.payload[character.name] = parseFloat(data.toFixed(2));
                             counterHum++;
                         } else if (character.uuid === '5543e32e51ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
@@ -286,9 +288,9 @@ module.exports = function(RED) {
                         } else if (character.uuid === '5543e32e51ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
                             let dataString = Buffer.from(data).toString();
                             let dataArray = dataString.split(',');
-                            adafruitData.payload['accX'] = parseFloat(dataArray[0]);
-                            adafruitData.payload['accY'] = parseFloat(dataArray[1]);
-                            adafruitData.payload['accZ'] = parseFloat(dataArray[2]);
+                            adafruitData.payload['ada_accX'] = parseFloat(dataArray[0]);
+                            adafruitData.payload['ada_accY'] = parseFloat(dataArray[1]);
+                            adafruitData.payload['ada_accZ'] = parseFloat(dataArray[2]);
                             counterAdafruitAcc++;
                         } else if (character.uuid === '5543e55451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
@@ -300,9 +302,9 @@ module.exports = function(RED) {
                         } else if (character.uuid === '5543e55451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
                             let dataString = Buffer.from(data).toString();
                             let dataArray = dataString.split(',');
-                            adafruitData.payload['gyroX'] = parseFloat(dataArray[0]);
-                            adafruitData.payload['gyroY'] = parseFloat(dataArray[1]);
-                            adafruitData.payload['gyroZ'] = parseFloat(dataArray[2]);
+                            adafruitData.payload['ada_gyroX'] = parseFloat(dataArray[0]);
+                            adafruitData.payload['ada_gyroY'] = parseFloat(dataArray[1]);
+                            adafruitData.payload['ada_gyroZ'] = parseFloat(dataArray[2]);
                             counterAdafruitGyro++;
                         } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Arduino') {
                             let dataGrouped = splitToChunks(data.toJSON().data, 3);
@@ -314,65 +316,66 @@ module.exports = function(RED) {
                         } else if (character.uuid === '5543e64451ca11ecbf630242ac130002' && data !== undefined && node.micro == 'Adafruit') {
                             let dataString = Buffer.from(data).toString();
                             let dataArray = dataString.split(',');
-                            adafruitData.payload['magX'] = parseFloat(dataArray[0]);
-                            adafruitData.payload['magY'] = parseFloat(dataArray[1]);
-                            adafruitData.payload['magZ'] = parseFloat(dataArray[2]);
+                            adafruitData.payload['ada_magX'] = parseFloat(dataArray[0]);
+                            adafruitData.payload['ada_magY'] = parseFloat(dataArray[1]);
+                            adafruitData.payload['ada_magZ'] = parseFloat(dataArray[2]);
                             counterAdafruitMag++;
                         }
                         // Send data to Node-RED after we read all given characteristics.
-                        if ( (counterHum + counterPres + counterTemp) % 3 == 0 && (counterHum + counterPres + counterTemp) !== 0){
+                        if ((counterHum + counterPres + counterTemp) % 3 == 0 && (counterHum + counterPres + counterTemp) !== 0) {
                             send(environmentalData);
                             done();
                         };
-                        if ( (counterArduinoAcc + counterArduinoGyro + counterArduinoMag) % 3 == 0 && (counterArduinoAcc + counterArduinoGyro + counterArduinoMag) !== 0){
+                        if ((counterArduinoAcc + counterArduinoGyro + counterArduinoMag) % 3 == 0 && (counterArduinoAcc + counterArduinoGyro + counterArduinoMag) !== 0) {
                             send(arduinoData);
                             done();
                         };
-                        if ( (counterAdafruitAcc + counterAdafruitGyro + counterAdafruitMag) % 3 == 0 && (counterAdafruitAcc + counterAdafruitGyro + counterAdafruitMag) !== 0){
+                        if ((counterAdafruitAcc + counterAdafruitGyro + counterAdafruitMag) % 3 == 0 && (counterAdafruitAcc + counterAdafruitGyro + counterAdafruitMag) !== 0) {
                             send(adafruitData);
                             done();
                         };
-                      });
+                    });
                     // Character data event listener END //
                 }
-
                 done();
-            } else if ( input === "disconnect"){
-                await peripheralArray[index].disconnectAsync().catch(e => node.send(e));
-                node.status({ fill: "red", shape: "dot", text: "Disconnected." });
-                done();
+            } else if (input === "disconnect") {
+                try {
+                    let e = await peripheralArray[index].disconnectAsync()
+                    node.status({ fill: "red", shape: "dot", text: "Disconnected." });
+                    send(e)
+                    done();
+                } catch (err) {
+                    done(err)
+                };
             } else {
                 send(new Error("Unknown input."));
             }
         };
-        // End of const Input //
-
         node.on('input', INPUT);
-
+        // END
+        // Set listener on close
         const CLOSE = () => {
             noble.removeAllListeners('input');
             noble.removeAllListeners('data');
             node.status({});
         };
         noble.on('close', CLOSE);
-
-        /*============================================*/
+        // END
         // Functions convert received buffer to float.
-        /*============================================*/
         function splitToChunks(array, parts) {
             let result = [];
             for (let i = parts; i > 0; i--) {
                 result.push(array.splice(0, Math.ceil(array.length / i)));
             }
-        return result;
+            return result;
         }
         function bufferToFloat(data) {
             let result = [];
             for (let i = 0; i < data.length; i++) {
-            let buffer = Buffer.from(data[i]).readFloatLE(0);
-            result.push(buffer);
-        }
-        return result;
+                let buffer = Buffer.from(data[i]).readFloatLE(0);
+                result.push(buffer);
+            }
+            return result;
         }
     }
     RED.nodes.registerType("BLE Connect", BLEConnect);
