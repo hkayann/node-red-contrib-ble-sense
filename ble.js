@@ -191,6 +191,14 @@ module.exports = function (RED) {
             "ada_magZ": 0
         };
         
+        let quaternionData = {};
+        quaternionData.payload = {
+            "qX": 0,
+            "qY": 0,
+            "qZ": 0,
+            "qW" :0
+        };
+
         let index;
         let counterTemp = 0;
         let counterHum = 0;
@@ -320,7 +328,17 @@ module.exports = function (RED) {
                             adafruitData.payload['ada_magY'] = parseFloat(dataArray[1]);
                             adafruitData.payload['ada_magZ'] = parseFloat(dataArray[2]);
                             counterAdafruitMag++;
-                        }
+                        } else if (character.uuid === 'a2278362b3fe11ecb9090242ac120002' && data !== undefined) {
+                            let dataGrouped = splitToChunks(data.toJSON().data, 4);
+                            let dataGroupedFloat = bufferToFloat(dataGrouped);
+                            quaternionData.payload['qX'] = dataGroupedFloat[0];
+                            quaternionData.payload['qY'] = dataGroupedFloat[1];
+                            quaternionData.payload['qZ'] = dataGroupedFloat[2];
+                            quaternionData.payload['qW'] = dataGroupedFloat[3];
+                            send(quaternionData);
+                            done();
+                        } 
+                        
                         // Send data to Node-RED after we read all given characteristics.
                         if ((counterHum + counterPres + counterTemp) % 3 == 0 && (counterHum + counterPres + counterTemp) !== 0) {
                             send(environmentalData);

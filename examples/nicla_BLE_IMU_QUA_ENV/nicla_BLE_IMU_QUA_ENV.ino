@@ -24,6 +24,10 @@
 #define BLE_UUID_HUMIDITY                         "2A6F"
 #define BLE_UUID_PRESSURE                         "2A6D"
 
+// QUATERNION UUID
+#define BLE_UUID_Q_SERVICE              "a2278074b3fe11ecb9090242ac120002"
+#define BLE_UUID_Q_CHAR                 "a2278362b3fe11ecb9090242ac120002"
+
 //----------------------------------------------------------------------------------------------------------------------
 // APP & I/O
 //----------------------------------------------------------------------------------------------------------------------
@@ -36,6 +40,7 @@
 
 #define IMU_UPDATE_INTERVAL                         (500)
 #define ENV_UPDATE_INTERVAL                         (500)
+#define Q_UPDATE_INTERVAL                           (500)
 
 // IMU parameters
 union imu_data {
@@ -72,6 +77,20 @@ Sensor pressure(SENSOR_ID_BARO);
 
 float temp, hum, pres;
 
+// IMU parameters
+union q_data {
+  struct __attribute__((packed)) {
+    float values[4]; // float array for data (it holds 3)
+    bool updated = false;
+  };
+  uint8_t bytes[4 * sizeof(float)]; // size as byte array 
+};
+union q_data qData;
+
+SensorQuaternion rotation(SENSOR_ID_RV);
+
+float qX, qY, qZ, qW;
+
 //const int BLE_LED_PIN = LED_BUILTIN;
 //const int RSSI_LED_PIN = LED_PWR;
 //----------------------------------------------------------------------------------------------------------------------
@@ -86,10 +105,13 @@ BLECharacteristic accCharacteristic(BLE_UUID_ACC_CHAR, BLERead | BLENotify, size
 BLECharacteristic gyroCharacteristic(BLE_UUID_GYRO_CHAR, BLERead | BLENotify, sizeof gyroData.bytes);
 BLECharacteristic magCharacteristic(BLE_UUID_MAG_CHAR, BLERead | BLENotify, sizeof magData.bytes);
 
-BLEService environmentalSensingService( BLE_UUID_ENVIRONMENTAL_SENSING_SERVICE );
-BLEShortCharacteristic temperatureCharacteristic( BLE_UUID_TEMPERATURE, BLERead | BLENotify );
-BLEUnsignedShortCharacteristic humidityCharacteristic( BLE_UUID_HUMIDITY, BLERead | BLENotify );
-BLEUnsignedLongCharacteristic pressureCharacteristic( BLE_UUID_PRESSURE, BLERead | BLENotify );
+BLEService environmentalSensingService(BLE_UUID_ENVIRONMENTAL_SENSING_SERVICE);
+BLEShortCharacteristic temperatureCharacteristic(BLE_UUID_TEMPERATURE, BLERead | BLENotify);
+BLEUnsignedShortCharacteristic humidityCharacteristic(BLE_UUID_HUMIDITY, BLERead | BLENotify);
+BLEUnsignedLongCharacteristic pressureCharacteristic(BLE_UUID_PRESSURE, BLERead | BLENotify);
+
+BLEService qService(BLE_UUID_Q_SERVICE);
+BLECharacteristic qCharacteristic(BLE_UUID_Q_CHAR, BLERead | BLENotify, sizeof qData.bytes);
 
 #define BLE_LED_PIN                               LED_BUILTIN
 
@@ -106,7 +128,6 @@ void setup()
   pinMode(BLE_LED_PIN, OUTPUT);
   digitalWrite(BLE_LED_PIN, LOW);
   initialize();
-  
 }
 
 void loop() {
@@ -124,6 +145,9 @@ void loop() {
   }
   if (envSensorTask()){
     envPrintTask();
+  }
+  if (qSensorTask()){
+    qPrintTask();
   }
 }
 
@@ -225,6 +249,29 @@ bool envSensorTask() {
   return envData.updated;
 }
 
+bool qSensorTask() {
+  static long previousMillis5 = 0;
+  unsigned long currentMillis5 = millis();
+  if (currentMillis5 - previousMillis5 < Q_UPDATE_INTERVAL) {
+    return false;
+  }
+  previousMillis5 = currentMillis5;
+  // get raw quaternions
+  qX = rotation.x();
+  qY = rotation.y();
+  qZ = rotation.z();
+  qW = rotation.w();
+
+  // set the values  
+  qData.values[0] = qX;
+  qData.values[1] = qY;
+  qData.values[2] = qZ;
+  qData.values[3] = qW;
+  qData.updated = true;
+  
+  return qData.updated;
+}
+
 //----------------------------------------------------------------------------------------------------------------------
 //  BLE SETUP
 /*
@@ -244,29 +291,35 @@ bool setupBleMode() {
   BLE.setDeviceName(BLE_DEVICE_NAME);
   BLE.setLocalName(BLE_LOCAL_NAME);
   BLE.setAdvertisedService(IMUService);
-  BLE.setAdvertisedService( environmentalSensingService );
+  BLE.setAdvertisedService(environmentalSensingService);
+  BLE.setAdvertisedService(qService);
   
-  // BLE add characteristics
+  // BLE add IMU characteristics
   IMUService.addCharacteristic(accCharacteristic);
   IMUService.addCharacteristic(gyroCharacteristic);
   IMUService.addCharacteristic(magCharacteristic);
 
-  // BLE add characteristics
+  // BLE add ENV characteristics
   environmentalSensingService.addCharacteristic(temperatureCharacteristic);
   environmentalSensingService.addCharacteristic(humidityCharacteristic);
   environmentalSensingService.addCharacteristic(pressureCharacteristic);
+
+  // BLE add Quaternion characteristics
+  qService.addCharacteristic(qCharacteristic);
   
   // add service
   BLE.addService(IMUService);
   BLE.addService(environmentalSensingService);
+  BLE.addService(qService);
 
-  // set the initial value for the characteristic:
+  // set the initial value for characteristics:
   accCharacteristic.writeValue(accData.bytes, sizeof accData.bytes);
   gyroCharacteristic.writeValue(gyroData.bytes, sizeof gyroData.bytes);
   magCharacteristic.writeValue(magData.bytes, sizeof magData.bytes);
   temperatureCharacteristic.writeValue(0);
   humidityCharacteristic.writeValue(0);
   pressureCharacteristic.writeValue(0);
+  qCharacteristic.writeValue(qData.bytes, sizeof qData.bytes);
   
   // set BLE event handlers
   BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
@@ -317,7 +370,7 @@ void bleTask()
     magData.updated = false;
   }
 
-    if ( envData.updated )
+    if (envData.updated)
   {
     // Unit is in degrees Celsius with a resolution of 0.01 degrees Celsius
     int16_t temperature = round(envData.temperatureValue * 100.0);
@@ -331,6 +384,17 @@ void bleTask()
     uint32_t pressure = round(envData.pressureValue * 10.0);
     pressureCharacteristic.writeValue(pressure);
     envData.updated = false;
+  }
+
+  if (qData.updated) {
+    // Bluetooth does not define quaternions
+    // Units in complex numbers
+    int16_t qX = round(qData.values[0] * 100.0);
+    int16_t qY = round(qData.values[1] * 100.0);
+    int16_t qZ = round(qData.values[2] * 100.0);
+    int16_t qW = round(qData.values[3] * 100.0);
+    qCharacteristic.writeValue(qData.bytes, sizeof qData.bytes);
+    qData.updated = false;
   }
 }
 
@@ -408,6 +472,21 @@ void envPrintTask()
   Serial.println( " Pa" );
 }
 
+void qPrintTask() 
+{
+  Serial.print("qX = ");
+  Serial.println(qData.values[0], 10);
+
+  Serial.print("qY = ");
+  Serial.println(qData.values[1], 10);
+
+  Serial.print("qZ = ");
+  Serial.println(qData.values[2], 10);
+
+  Serial.print("qW = ");
+  Serial.println(qData.values[3], 10);
+
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // Event Handlers & Initializers
@@ -458,6 +537,11 @@ void initialize() {
     Serial.println("Failed to initialize pressure!");
     while (1);
   }
+  if (!rotation.begin()) {
+    Serial.println("Failed to initialize rotation!");
+    rotation.configure(10, 1);
+    while (1);
+  }
   if (!setupBleMode()) {
     while (1);
   } else {
@@ -465,12 +549,15 @@ void initialize() {
   }
   
   // write initial values
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) 
+  {
     accData.values[i] = i;
     gyroData.values[i] = i;
     magData.values[i] = i;
   }
-  temp = 0.0;
-  hum = 0.0;
-  pres = 0.0;
+  temp = 0.0; hum = 0.0; pres = 0.0;
+  for (int j = 0; j < 4; j++) 
+  {
+    qData.values[j] = j;
+  }
 }
