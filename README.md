@@ -26,7 +26,7 @@ npm install node-red-contrib-ble-sense
 
 # Prerequisite
 
-Requires [@abandonware/noble: 1.9.2-15.](https://www.npmjs.com/package/@abandonware/noble).
+Requires [@abandonware/noble: 1.9.2-20.](https://www.npmjs.com/package/@abandonware/noble).
 
 # Quick Start
 
@@ -84,9 +84,12 @@ url = {https://www.sciencedirect.com/science/article/pii/S2542660521000810},<br 
 author = {Hakan Kayan and Yasar Majib and Wael Alsafery and Mahmoud Barhamgi and Charith Perera}<br />
 }
 
+# Latest Update Notes
+- Fixed the random connection drops.
+- Fixed the wrong node status for the scanner node.
+- Dependencies are updated.
+- Code is less spaghetti.
+
 # Known Bugs
 
-- Based on your setup (e.g., BlueZ version, kernel version), you might not able get a desired result.
-- BLE Scanner status is not changing properly after establishing the first connection.
-- To reconnect, we need to wait around 10 secs after disconnnecting. Otherwise the connection drops.
-- Nicla Sense ME might drop a connection.
+- Bluetooth adapter state event is not properly emitted during initialization.
